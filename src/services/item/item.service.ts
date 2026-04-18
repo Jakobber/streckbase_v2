@@ -26,7 +26,8 @@ export class ItemService {
       .forMember((dbItem) => <Partial<Item>>{
         id: dbItem.item_id,
         barcodes: dbItem.codes ? dbItem.codes.split(",") : [],
-        imageUrl: dbItem.image
+        imageUrl: dbItem.image,
+        exclude_from_highscore: !!dbItem.exclude_from_highscore
       })
       .map();
   }
@@ -82,8 +83,18 @@ export class ItemService {
       .then(() => this.getItem(item.id));
   }
 
+  getArchivedItems(limit: number, offset: number): Promise<Item[]> {
+    return this.itemRepository.getArchivedItems(limit, offset)
+      .then((dbItems: DBItem[]) => dbItems.map<Item>((dbItem: DBItem) => this.mapItem(dbItem)));
+  }
+
   deleteItem(id: number): Promise<void> {
     return this.itemRepository.deleteItem(id)
+      .then(() => Promise.resolve());
+  }
+
+  restoreItem(id: number): Promise<void> {
+    return this.itemRepository.restoreItem(id)
       .then(() => Promise.resolve());
   }
 }

@@ -10,7 +10,10 @@ export class PurchaseRepository extends BaseRepository {
 
   getUserPurchases(userId: string, limit: number, offset: number): Promise<Purchase[]> {
     return this.dbQuery(`
-      SELECT p1.id, p1.item_id, p1.date, i.name, i.price, i.volume, i.alcohol,
+      SELECT p1.id, p1.item_id, p1.date, p1.najs,
+        COALESCE(i.name, 'Återbetalning') AS name,
+        COALESCE(p1.price, i.price, p1.amount) AS price,
+        i.volume, i.alcohol,
       (
         SELECT group_concat(Barcodes.code) AS codes
         FROM Barcodes
@@ -24,7 +27,7 @@ export class PurchaseRepository extends BaseRepository {
         GROUP BY p2.item_id
       ) AS total
       FROM Purchases p1
-      INNER JOIN Items i ON i.item_id = p1.item_id
+      LEFT JOIN Items i ON i.item_id = p1.item_id
       WHERE p1.user_id = ?
       ORDER BY p1.id
       DESC
@@ -51,7 +54,7 @@ export class PurchaseRepository extends BaseRepository {
 
   getLatestUserPurchase(userId: string): Promise<Purchase> {
     return this.dbQuery(`
-      SELECT u.user_id, u.email, u.firstname, u.lastname, u.debt, u.lobare, u.admin, p1.id, p1.item_id, p1.date, i.name, i.price, i.volume, i.alcohol,
+      SELECT u.user_id, u.email, u.firstname, u.lastname, u.debt, u.lobare, u.admin, p1.id, p1.item_id, p1.date, p1.najs, i.name, COALESCE(p1.price, i.price) AS price, i.volume, i.alcohol,
       (
         SELECT group_concat(b.code) AS codes
         FROM Barcodes b
@@ -94,7 +97,7 @@ export class PurchaseRepository extends BaseRepository {
 
   getFeedPurchases(limit: number, offset: number): Promise<Purchase[] & User[]> {
     return this.dbQuery(`
-      SELECT u.user_id, u.email, u.firstname, u.lastname, u.debt, u.lobare, u.admin, p1.id, p1.item_id, p1.date, i.name, i.price, i.volume, i.alcohol,
+      SELECT u.user_id, u.email, u.firstname, u.lastname, u.debt, u.lobare, u.admin, p1.id, p1.item_id, p1.date, p1.najs, i.name, COALESCE(p1.price, i.price) AS price, i.volume, i.alcohol,
       (
         SELECT group_concat(b.code) AS codes
         FROM Barcodes b
@@ -116,10 +119,16 @@ export class PurchaseRepository extends BaseRepository {
     `, [limit, offset]);
   }
 
-  createPurchase(userId: string, itemId: number): Promise<any> {
+  createPurchase(userId: string, itemId: number, price: number, najs: boolean = false): Promise<any> {
     return this.dbQuery(`
-      INSERT INTO Purchases (user_id, item_id, date) VALUES (?, ?, ?)
-    `, [userId, itemId, new Date().toJSON()]);
+      INSERT INTO Purchases (user_id, item_id, date, price, najs) VALUES (?, ?, ?, ?, ?)
+    `, [userId, itemId, new Date().toJSON(), price, najs ? 1 : 0]);
+  }
+
+  createRepayment(userId: string, amount: number): Promise<any> {
+    return this.dbQuery(`
+      INSERT INTO Purchases (user_id, item_id, date, amount) VALUES (?, NULL, ?, ?)
+    `, [userId, new Date().toJSON(), -amount]);
   }
 
   deletePurchase(purchaseId: number): Promise<any> {

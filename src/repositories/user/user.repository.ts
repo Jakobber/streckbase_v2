@@ -33,10 +33,32 @@ export class UserRepository extends BaseRepository {
           (SELECT SUM(i.price)
           FROM Purchases p
           JOIN Items i ON p.item_id = i.item_id
-          WHERE u.user_id = p.user_id 
+          WHERE u.user_id = p.user_id
           GROUP BY p.user_id),
         0) AS totalDebt
       FROM Users u
+      WHERE u.enabled = 1
+      ORDER BY u.created_at ASC
+      LIMIT ?
+      OFFSET ?
+    `,
+      [limit, offset]
+    );
+  }
+
+  getArchivedUsers(limit: number, offset: number): Promise<User[]> {
+    return this.dbQuery(
+      `
+      SELECT u.user_id, u.email, u.firstname, u.lastname, u.lobare, u.admin, u.debt,
+        IFNULL(
+          (SELECT SUM(i.price)
+          FROM Purchases p
+          JOIN Items i ON p.item_id = i.item_id
+          WHERE u.user_id = p.user_id
+          GROUP BY p.user_id),
+        0) AS totalDebt
+      FROM Users u
+      WHERE u.enabled = 0
       ORDER BY u.created_at ASC
       LIMIT ?
       OFFSET ?
@@ -49,21 +71,23 @@ export class UserRepository extends BaseRepository {
     return this.dbQuery(`
       SELECT u.user_id, u.email, u.firstname, u.lastname, u.lobare, u.admin,
         IFNULL(
-          (SELECT SUM(i.price)
+          (SELECT SUM(COALESCE(p.price, i.price))
           FROM Purchases p
           JOIN Items i ON p.item_id = i.item_id
-          WHERE u.user_id = p.user_id 
+          WHERE u.user_id = p.user_id
             AND EXTRACT(YEAR FROM p.date) = YEAR(NOW())
             AND EXTRACT(MONTH FROM p.date) = MONTH(NOW())
-            AND i.item_id NOT IN (130, 253)
+            AND p.najs = 0
+            AND i.exclude_from_highscore = 0
           GROUP BY p.user_id),
         0) AS debt,
         IFNULL(
-          (SELECT SUM(i.price)
+          (SELECT SUM(COALESCE(p.price, i.price))
           FROM Purchases p
           JOIN Items i ON p.item_id = i.item_id
-          WHERE u.user_id = p.user_id 
-            AND i.item_id NOT IN (569, 580, 590, 595)
+          WHERE u.user_id = p.user_id
+            AND p.najs = 0
+            AND i.exclude_from_highscore = 0
           GROUP BY p.user_id),
         0) AS totalDebt
       FROM Users u
@@ -71,6 +95,14 @@ export class UserRepository extends BaseRepository {
       ORDER BY debt
       DESC
     `);
+  }
+
+  disableUser(id: string): Promise<any> {
+    return this.dbQuery(`UPDATE Users SET enabled = 0 WHERE user_id = ?`, [id]);
+  }
+
+  restoreUser(id: string): Promise<any> {
+    return this.dbQuery(`UPDATE Users SET enabled = 1 WHERE user_id = ?`, [id]);
   }
 
   updateDebt(id: string, debt: number): Promise<any> {

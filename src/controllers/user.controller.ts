@@ -64,10 +64,11 @@ export const updateUser = (req, res) => {
 
 export const createPurchase = (req, res) => {
   const userId: string = req.params.userId;
-  const item: Item = req.body;
+  const { najs, ...itemData } = req.body;
+  const item: Item = itemData;
   if (userId === undefined || !item) return res.sendStatus(400);
 
-  userService.createPurchase(userId, item)
+  userService.createPurchase(userId, item, !!najs)
     .then((userPurchase: User) => res.json(userPurchase));
 }
 
@@ -77,6 +78,37 @@ export const getFeedPurchases = (req, res) => {
 
   userService.getFeedPurchases(limit, offset)
     .then((feedPurchases: User[]) => res.json(feedPurchases));
+}
+
+export const getArchivedUsers = (req, res) => {
+  const offset = parseInt(req.query.offset, 10) || 0;
+  const limit = parseInt(req.query.limit, 10) || 1000;
+  userService.getArchivedUsers(limit, offset)
+    .then((users: User[]) => res.json(users));
+}
+
+export const disableUser = (req, res) => {
+  const id: string = req.params.id;
+  userService.disableUser(id)
+    .then(() => res.sendStatus(204))
+    .catch(() => res.sendStatus(500));
+}
+
+export const restoreUser = (req, res) => {
+  const id: string = req.params.id;
+  userService.restoreUser(id)
+    .then(() => res.sendStatus(204))
+    .catch(() => res.sendStatus(500));
+}
+
+export const createRepayment = (req, res) => {
+  const userId: string = req.params.userId;
+  const amount: number = parseInt(req.body.amount, 10);
+  if (!userId || !amount || amount <= 0) return res.sendStatus(400);
+
+  userService.createRepayment(userId, amount)
+    .then(() => res.status(201).json({}))
+    .catch(() => res.status(500).json({}));
 }
 
 export const deleteUserPurchase = (req, res) => {

@@ -58,10 +58,22 @@ export const updateItem = (req, res) => {
     });
 }
 
+export const getArchivedItems = (req, res) => {
+  const offset = parseInt(req.query.offset, 10) || 0;
+  const limit = parseInt(req.query.limit, 10) || 20;
+
+  itemService.getArchivedItems(limit, offset)
+    .then((items: Item[]) => res.json(items));
+}
+
 export const deleteItem = (req, res) => {
   const id: number = req.params.id;
   itemService.deleteItem(id)
-    .then(() => {
-      return res.sendStatus(204);
-    });
+    .then(() => res.sendStatus(204));
+}
+
+export const restoreItem = (req, res) => {
+  const id: number = req.params.id;
+  itemService.restoreItem(id)
+    .then(() => res.sendStatus(204));
 }

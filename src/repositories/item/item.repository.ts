@@ -14,7 +14,7 @@ export class ItemRepository extends BaseRepository {
     if (!id && id !== 0) return null;
 
     return this.dbQuery(`
-      SELECT Items.item_id, name, price, volume, alcohol, group_concat(code) AS codes, systembolaget_id, Images.thumbnail, Images.large AS image
+      SELECT Items.item_id, name, price, price_xlob, price_andra, price_najs, volume, alcohol, group_concat(code) AS codes, systembolaget_id, Images.thumbnail, Images.large AS image, exclude_from_highscore
       FROM Items
       LEFT JOIN Barcodes ON Barcodes.item_id = Items.item_id
       LEFT JOIN Images ON Images.item_id = Items.item_id
@@ -27,7 +27,7 @@ export class ItemRepository extends BaseRepository {
 
   getBarcodeItem(barcode: string): Promise<Item> {
     barcode = `%${barcode}%`;
-    return this.dbQuery("SELECT item_id AS id FROM Barcodes WHERE code LIKE ?", [barcode])
+    return this.dbQuery("SELECT b.item_id AS id FROM Barcodes b JOIN Items i ON i.item_id = b.item_id WHERE b.code LIKE ? AND i.enabled = 1", [barcode])
       .then((res: any[]) => res[0] && res[0].id ? res[0].id : null)
       .then((id: number) => this.getItem(id));
   }
@@ -39,10 +39,26 @@ export class ItemRepository extends BaseRepository {
 
   getItems(limit: number, offset: number): Promise<Item[]> {
     return this.dbQuery(`
-      SELECT Items.item_id, name, price, volume, alcohol, group_concat(code) AS codes, systembolaget_id, Images.thumbnail, Images.large AS image
+      SELECT Items.item_id, name, price, price_xlob, price_andra, price_najs, volume, alcohol, group_concat(code) AS codes, systembolaget_id, Images.thumbnail, Images.large AS image, exclude_from_highscore
       FROM Items
       LEFT JOIN Barcodes ON Barcodes.item_id = Items.item_id
       LEFT JOIN Images ON Images.item_id = Items.item_id
+      WHERE Items.enabled = 1
+      GROUP BY Items.item_id
+      ORDER BY Items.item_id
+      DESC
+      LIMIT ?
+      OFFSET ?
+    `, [limit, offset]);
+  }
+
+  getArchivedItems(limit: number, offset: number): Promise<Item[]> {
+    return this.dbQuery(`
+      SELECT Items.item_id, name, price, price_xlob, price_andra, price_najs, volume, alcohol, group_concat(code) AS codes, systembolaget_id, Images.thumbnail, Images.large AS image, exclude_from_highscore
+      FROM Items
+      LEFT JOIN Barcodes ON Barcodes.item_id = Items.item_id
+      LEFT JOIN Images ON Images.item_id = Items.item_id
+      WHERE Items.enabled = 0
       GROUP BY Items.item_id
       ORDER BY Items.item_id
       DESC
@@ -78,8 +94,8 @@ export class ItemRepository extends BaseRepository {
 
         this.beginTransaction(connection)
           .then(() => this.poolQuery(connection, `
-              INSERT INTO Items (name, price, volume, alcohol) VALUES (?, ?, ?, ?)
-            `, [item.name, item.price, item.volume, item.alcohol])
+              INSERT INTO Items (name, price, price_xlob, price_andra, price_najs, volume, alcohol) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [item.name, item.price, item.price_xlob, item.price_andra, item.price_najs, item.volume, item.alcohol])
           )
           .then((results: any) => {
             id = results.insertId;
@@ -111,14 +127,20 @@ export class ItemRepository extends BaseRepository {
   updateItem(item: APIItem): Promise<any> {
     return this.dbQuery(`
       UPDATE Items i, Barcodes b
-      SET i.name = ?, i.price = ?, i.volume = ?, i.alcohol = ?, b.code = ?
+      SET i.name = ?, i.price = ?, i.price_xlob = ?, i.price_andra = ?, i.price_najs = ?, i.volume = ?, i.alcohol = ?, i.exclude_from_highscore = ?, b.code = ?
       WHERE i.item_id = b.item_id AND i.item_id = ?
-    `, [item.name, item.price, item.volume, item.alcohol, item.barcodes.join(), item.id]);
+    `, [item.name, item.price, item.price_xlob, item.price_andra, item.price_najs, item.volume, item.alcohol, item.exclude_from_highscore ? 1 : 0, item.barcodes.join(), item.id]);
   }
 
   deleteItem(id: number): Promise<any> {
     return this.dbQuery(`
-      DELETE FROM Items WHERE item_id = ?
+      UPDATE Items SET enabled = 0 WHERE item_id = ?
+    `, [id]);
+  }
+
+  restoreItem(id: number): Promise<any> {
+    return this.dbQuery(`
+      UPDATE Items SET enabled = 1 WHERE item_id = ?
     `, [id]);
   }
 

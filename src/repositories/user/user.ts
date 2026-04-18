@@ -7,4 +7,5 @@ export class User {
   lobare: boolean = null;
   admin: boolean = null;
   totaltDebt: number = null;
+  enabled: number = null;
 }

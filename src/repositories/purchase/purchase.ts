@@ -8,4 +8,6 @@ export class Purchase {
   alcohol?: number = null;
   codes: string = null;
   total: number = null;
+  najs: number = null;
+  amount: number = null;
 }

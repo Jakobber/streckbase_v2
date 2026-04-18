@@ -28,7 +28,7 @@ export class UserService {
       .createMap(dbUser)
       .forMember((dbUser) => <Partial<User>>{
         id: dbUser.user_id,
-        lobare: !!dbUser.lobare,
+        lobare: Number(dbUser.lobare),
         admin: !!dbUser.admin
       })
       .map();
@@ -53,7 +53,8 @@ export class UserService {
 
         const purchase: Partial<Purchase> = {
           item,
-          totalCount: dbPurchase.total
+          totalCount: dbPurchase.total,
+          najs: !!dbPurchase.najs
         };
 
         return purchase;
@@ -106,6 +107,19 @@ export class UserService {
       });
   }
 
+  getArchivedUsers(limit: number, offset: number): Promise<User[]> {
+    return this.userRepository.getArchivedUsers(limit, offset)
+      .then((dbUsers: DBUser[]) => dbUsers.map<User>((dbUser: DBUser) => this.mapUser(dbUser)));
+  }
+
+  disableUser(id: string): Promise<void> {
+    return this.userRepository.disableUser(id).then(() => Promise.resolve());
+  }
+
+  restoreUser(id: string): Promise<void> {
+    return this.userRepository.restoreUser(id).then(() => Promise.resolve());
+  }
+
   createUser(user: User): Promise<User> {
     return this.userRepository.createUser(user)
       .then(() => {
@@ -119,7 +133,7 @@ export class UserService {
       .then(() => this.getUser(user.id));
   }
 
-  createPurchase(userId: string, item: Item): Promise<User> {
+  createPurchase(userId: string, item: Item, najs: boolean = false): Promise<User> {
     if (!(userId && item && item.id)) return null;
 
     let user: User;
@@ -137,8 +151,20 @@ export class UserService {
           })
           .map();
 
-        user.debt += realItem.price;
-        return this.purchaseRepository.createPurchase(userId, item.id);
+        const isNajs = najs || (realItem.name && realItem.name.toLowerCase().includes('najs'));
+        let price: number;
+        if (isNajs) {
+          price = realItem.price_najs || realItem.price;
+        } else {
+          switch (user.lobare) {
+            case 2: price = realItem.price_xlob || realItem.price; break;
+            case 0: price = realItem.price_andra || realItem.price; break;
+            default: price = realItem.price; break;
+          }
+        }
+
+        user.debt += price;
+        return this.purchaseRepository.createPurchase(userId, item.id, price, isNajs);
       })
       .then(() => {
         return this.userRepository.updateDebt(userId, user.debt);
@@ -161,6 +187,17 @@ export class UserService {
 
           return user;
         });
+      });
+  }
+
+  createRepayment(userId: string, amount: number): Promise<any> {
+    if (!(userId && amount > 0)) return Promise.reject(new Error("Invalid repayment"));
+
+    return this.getUser(userId)
+      .then((user: User) => {
+        const newDebt = user.debt - amount;
+        return this.purchaseRepository.createRepayment(userId, amount)
+          .then(() => this.userRepository.updateDebt(userId, newDebt));
       });
   }
 
