@@ -105,7 +105,7 @@ export class ItemRepository extends BaseRepository {
           })
           .then(() => {
             if (!item.imageUrl) {
-              return new Promise((resolve) => resolve());
+              return new Promise<void>((resolve) => resolve());
             } else {
               return this.poolQuery(connection, `
                 INSERT INTO Images (item_id, large) VALUES (?, ?)
@@ -113,7 +113,7 @@ export class ItemRepository extends BaseRepository {
             }
           })
           .then(() => this.commit(connection))
-          .then(() => resolve())
+          .then(() => resolve(undefined))
           .catch((err: MysqlError) => {
             connection.rollback(() => {
               connection.release();

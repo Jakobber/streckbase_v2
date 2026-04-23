@@ -62,7 +62,7 @@ export class Mapper<T, U> {
       if (Object(destination).hasOwnProperty(key)) {
         destination[<any>key] = this.mapped[key];
       } else {
-        throw (`Property '${key}' does not exist on type ${typeof this.destinationType}`);
+        throw new Error(`Property '${String(key)}' does not exist on type ${typeof this.destinationType}`);
       }
     }
 

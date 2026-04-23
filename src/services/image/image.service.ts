@@ -10,7 +10,7 @@ export class ImageService {
     // mkdir(`${this.path}/thumbnails`, () => { });
   }
 
-  private downloadImage(url: string, filename: string): Promise<any> {
+  private downloadImage(url: string, filename: string): Promise<void> {
     return new Promise((resolve, reject) => {
       request.head(url, (err) => {
         if (err) return reject(err);
