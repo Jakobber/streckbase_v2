@@ -23,6 +23,7 @@ router.get("/users/:userId/purchases/:purchaseId?", userController.getUserPurcha
 router.post("/users", requireAuth, userController.createUser);
 router.post("/users/:userId/purchases", userController.createPurchase);
 router.post("/users/:userId/repayment", requireAuth, userController.createRepayment);
+router.post("/users/:userId/charge", requireAuth, userController.createCharge);
 router.put("/users/:id", requireAuth, userController.updateUser);
 router.delete("/users/:userId/purchases/:purchaseId", requireAuth, userController.deleteUserPurchase);
 

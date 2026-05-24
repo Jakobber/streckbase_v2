@@ -6,7 +6,7 @@ export class BaseRepository {
 
   constructor() { }
 
-  dbQuery<T>(query: string, params = []): Promise<T> {
+  dbQuery<T>(query: string, params: any[] = []): Promise<T> {
     return new Promise((resolve, reject) => {
       dbConnection.getConnection((poolErr: MysqlError, connection: PoolConnection) => {
 
@@ -14,7 +14,7 @@ export class BaseRepository {
           connection.release();
           reject(poolErr);
         } else {
-          connection.query(query, params, (err: MysqlError, result: T) => {
+          connection.query(query, params, (err: MysqlError | null, result: T) => {
             connection.release();
 
             if (err) return reject(err);
@@ -44,7 +44,7 @@ export class BaseRepository {
 
   poolQuery(connection: PoolConnection, query: string, values: any[]): Promise<any> {
     return new Promise((resolve, reject) => {
-      connection.query(query, values, (err: MysqlError, results: any) => {
+      connection.query(query, values, (err: MysqlError | null, results: any) => {
         if (err) {
           reject(err);
         } else {

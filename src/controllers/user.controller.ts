@@ -111,6 +111,16 @@ export const createRepayment = (req, res) => {
     .catch(() => res.status(500).json({}));
 }
 
+export const createCharge = (req, res) => {
+  const userId: string = req.params.userId;
+  const amount: number = parseInt(req.body.amount, 10);
+  if (!userId || !amount || amount <= 0) return res.sendStatus(400);
+
+  userService.createCharge(userId, amount)
+    .then(() => res.status(201).json({}))
+    .catch(() => res.status(500).json({}));
+}
+
 export const deleteUserPurchase = (req, res) => {
   const userId: string = req.params.userId;
   const purchaseId: number = req.params.purchaseId;

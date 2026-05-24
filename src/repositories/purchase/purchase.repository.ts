@@ -49,7 +49,7 @@ export class PurchaseRepository extends BaseRepository {
       JOIN Items i ON i.item_id = p1.item_id
       WHERE p1.id = ?
     `, [purchaseId])
-      .then((res: any[]) => res[0]);
+      .then((res: any[]) => res[0]) as Promise<Purchase>;
   }
 
   getLatestUserPurchase(userId: string): Promise<Purchase> {
@@ -74,7 +74,7 @@ export class PurchaseRepository extends BaseRepository {
       DESC
       LIMIT 1
     `, [userId])
-      .then((res: any[]) => res[0]);
+      .then((res: any[]) => res[0]) as Promise<Purchase>;
   }
 
   getPurchases(limit: number, offset: number): Promise<Purchase[]> {
@@ -129,6 +129,12 @@ export class PurchaseRepository extends BaseRepository {
     return this.dbQuery(`
       INSERT INTO Purchases (user_id, item_id, date, amount) VALUES (?, NULL, ?, ?)
     `, [userId, new Date().toJSON(), -amount]);
+  }
+
+  createCharge(userId: string, amount: number): Promise<any> {
+    return this.dbQuery(`
+      INSERT INTO Purchases (user_id, item_id, date, price) VALUES (?, NULL, ?, ?)
+    `, [userId, new Date().toJSON(), amount]);
   }
 
   deletePurchase(purchaseId: number): Promise<any> {

@@ -201,6 +201,17 @@ export class UserService {
       });
   }
 
+  createCharge(userId: string, amount: number): Promise<any> {
+    if (!(userId && amount > 0)) return Promise.reject(new Error("Invalid charge"));
+
+    return this.getUser(userId)
+      .then((user: User) => {
+        const newDebt = user.debt + amount;
+        return this.purchaseRepository.createCharge(userId, amount)
+          .then(() => this.userRepository.updateDebt(userId, newDebt));
+      });
+  }
+
   deleteUserPurchase(userId: string, purchaseId: number): Promise<any> {
     let price: number;
     let debt: number;
